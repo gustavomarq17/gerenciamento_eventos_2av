@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from app.schemas.evento import EventoCreate, EventoResponse, EventoUpdate
+from app.utils.security import obter_usuario_atual
 from app.database.connection import supabase
 
 router = APIRouter(prefix="/eventos", tags=["Eventos"])
@@ -18,15 +19,24 @@ def obter_evento(evento_id: int):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento não encontrado.")
     return response.data[0]
 
-@router.post("/", response_model=EventoResponse, status_code=status.HTTP_201_CREATED)
-def criar_evento(evento: EventoCreate):
-    """Cadastrar um novo evento (RF04)."""
-    dados = evento.model_dump()
-    dados["data_evento"] = dados["data_evento"].isoformat()
+@router.post("/", status_code=status.HTTP_201_CREATED)
+def criar_evento(dados: EventoCreate, usuario_atual: dict = Depends(obter_usuario_atual)):
     
-    response = supabase.table("eventos").insert(dados).execute()
+    dados_dict = dados.model_dump()
+    
+    payload = {
+        "nome": dados_dict.get("titulo"),
+        "descricao": dados_dict.get("descricao"),
+        "data_evento": str(dados_dict.get("data_evento"))[:10],
+        "local": "Auditório Principal",
+        "capacidade": dados_dict.get("capacidade"),
+        "categoria_id": dados_dict.get("categoria_id")
+    }
+    
+    response = supabase.table("eventos").insert(payload).execute()
     if not response.data:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Erro ao cadastrar evento.")
+        raise HTTPException(status_code=400, detail="Erro ao criar evento.")
+        
     return response.data[0]
 
 @router.put("/{evento_id}", response_model=EventoResponse)
