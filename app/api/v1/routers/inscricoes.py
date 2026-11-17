@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from app.schemas.inscricao import InscricaoCreate, InscricaoResponse
+from app.utils.security import obter_usuario_atual
 from app.database.connection import supabase
 
 router = APIRouter(prefix="/inscricoes", tags=["Inscrições"])
@@ -9,6 +10,17 @@ def listar_inscricoes():
     """Listar todas as inscrições efetuadas."""
     response = supabase.table("inscricoes").select("*").execute()
     return response.data
+
+@router.post("/", status_code=status.HTTP_201_CREATED)
+def criar_inscricao(dados: InscricaoCreate, usuario_atual: dict = Depends(obter_usuario_atual)):
+    
+    payload = dados.model_dump()
+    response = supabase.table("inscricoes").insert(payload).execute()
+    
+    if not response.data:
+        raise HTTPException(status_code=400, detail="Erro ao criar inscrição.")
+        
+    return response.data[0]
 
 @router.post("/", response_model=InscricaoResponse, status_code=status.HTTP_201_CREATED)
 def realizar_inscricao(inscricao: InscricaoCreate):
@@ -54,8 +66,37 @@ def realizar_inscricao(inscricao: InscricaoCreate):
 
 @router.delete("/{inscricao_id}", status_code=status.HTTP_204_NO_CONTENT)
 def cancelar_inscricao(inscricao_id: int):
-    """Cancelar inscrição (RF08, RN05)."""
-    response = supabase.table("inscricoes").delete().eq("id", inscricao_id).execute()
-    if not response.data:
+    """Cancela inscrição e promove automaticamente o primeiro da fila de espera."""
+    
+    inscricao_resp = supabase.table("inscricoes").select("*").eq("id", inscricao_id).execute()
+    if not inscricao_resp.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inscrição não encontrada.")
+    
+    inscricao = inscricao_resp.data[0]
+    evento_id = inscricao["evento_id"]
+
+    delete_resp = supabase.table("inscricoes").delete().eq("id", inscricao_id).execute()
+    if not delete_resp.data:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Erro ao cancelar inscrição.")
+
+    fila_resp = supabase.table("lista_espera") \
+        .select("*") \
+        .eq("evento_id", evento_id) \
+        .order("data_criacao", desc=False) \
+        .limit(1) \
+        .execute()
+
+    if fila_resp.data:
+        proximo = fila_resp.data[0]
+        
+        nova_inscricao = {
+            "evento_id": proximo["evento_id"],
+            "nome_participante": proximo["nome_participante"],
+            "email_participante": proximo["email_participante"]
+        }
+        
+        supabase.table("inscricoes").insert(nova_inscricao).execute()
+        
+        supabase.table("lista_espera").delete().eq("id", proximo["id"]).execute()
+
     return None

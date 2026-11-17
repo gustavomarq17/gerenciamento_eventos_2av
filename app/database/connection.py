@@ -1,13 +1,9 @@
 import os
-from dotenv import load_dotenv
 from supabase import create_client, Client
-from sqlalchemy.orm import declarative_base
 
-load_dotenv()
+SUPABASE_URL = "https://fsndoqjiaxjzgeephod.supabase.co"
+SUPABASE_KEY = "sua_chave_publica_aqui"
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+print(f"DEBUG URL SUPABASE: {SUPABASE_URL}")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-Base = declarative_base()
