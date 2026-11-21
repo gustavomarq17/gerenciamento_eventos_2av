@@ -1,1 +1,6 @@
 .env
+# [2AV] Não versionar o ambiente virtual, caches do Python e do pytest.
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/

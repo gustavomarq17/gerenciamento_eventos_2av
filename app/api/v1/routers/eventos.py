@@ -43,9 +43,14 @@ def criar_evento(dados: EventoCreate, usuario_atual: dict = Depends(obter_usuari
 def atualizar_evento(evento_id: int, evento: EventoUpdate):
     """Editar dados de um evento (RF06)."""
     dados_atualizados = {k: v for k, v in evento.model_dump().items() if v is not None}
-    
+
+    # [2AV] A coluna no banco se chama "nome" (e não "titulo"), igual ao que o POST já faz.
+    if "titulo" in dados_atualizados:
+        dados_atualizados["nome"] = dados_atualizados.pop("titulo")
+
     if "data_evento" in dados_atualizados and dados_atualizados["data_evento"]:
-        dados_atualizados["data_evento"] = dados_atualizados["data_evento"].isoformat()
+        # [2AV] A coluna data_evento é do tipo date: envia só "AAAA-MM-DD", igual ao POST.
+        dados_atualizados["data_evento"] = dados_atualizados["data_evento"].isoformat()[:10]
 
     if not dados_atualizados:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nenhum dado informado para atualização.")

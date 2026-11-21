@@ -11,19 +11,11 @@ def listar_inscricoes():
     response = supabase.table("inscricoes").select("*").execute()
     return response.data
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
-def criar_inscricao(dados: InscricaoCreate, usuario_atual: dict = Depends(obter_usuario_atual)):
-    
-    payload = dados.model_dump()
-    response = supabase.table("inscricoes").insert(payload).execute()
-    
-    if not response.data:
-        raise HTTPException(status_code=400, detail="Erro ao criar inscrição.")
-        
-    return response.data[0]
-
+# [2AV] Havia dois POST "/" neste arquivo. Na execução valia o primeiro (sem as regras de negócio)
+# e o Swagger mostrava o segundo (sem cadeado). O duplicado foi removido e esta rota, que tem as
+# regras RN02/RN03/RN08, passou a exigir token JWT (rota protegida).
 @router.post("/", response_model=InscricaoResponse, status_code=status.HTTP_201_CREATED)
-def realizar_inscricao(inscricao: InscricaoCreate):
+def realizar_inscricao(inscricao: InscricaoCreate, usuario_atual: dict = Depends(obter_usuario_atual)):
     """Realizar inscrição em um evento (RF07)."""
 
     evento_resp = supabase.table("eventos").select("*").eq("id", inscricao.evento_id).execute()
@@ -62,6 +54,15 @@ def realizar_inscricao(inscricao: InscricaoCreate):
     if not response.data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Erro ao realizar inscrição.")
     
+    return response.data[0]
+
+# [2AV] Marca a presença do participante na inscrição (necessária para emitir certificado - RN07).
+@router.patch("/{inscricao_id}/presenca", response_model=InscricaoResponse)
+def marcar_presenca(inscricao_id: int, usuario_atual: dict = Depends(obter_usuario_atual)):
+    """Registra a presença do participante em uma inscrição."""
+    response = supabase.table("inscricoes").update({"presente": True}).eq("id", inscricao_id).execute()
+    if not response.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inscrição não encontrada.")
     return response.data[0]
 
 @router.delete("/{inscricao_id}", status_code=status.HTTP_204_NO_CONTENT)

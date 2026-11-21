@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from app.schemas.usuarios import UsuarioCreate, UsuarioResponse, LoginRequest, Token
+# [2AV] OAuth2PasswordRequestForm: formulário de login usado pelo botão "Authorize" do Swagger.
+from fastapi.security import OAuth2PasswordRequestForm
+from app.schemas.usuarios import UsuarioCreate, UsuarioResponse, Token
 from app.utils.security import hash_senha, verificar_senha, criar_token_acesso, obter_usuario_atual
 from app.database.connection import supabase
 
@@ -7,42 +9,49 @@ router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 @router.post("/register", response_model=UsuarioResponse, status_code=status.HTTP_201_CREATED)
 def cadastrar_usuario(dados: UsuarioCreate):
-    
+
     existe = supabase.table("usuarios").select("*").eq("email", dados.email).execute()
     if existe.data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="E-mail já cadastrado.")
-    
-   
+
+
     senha_segura = hash_senha(dados.senha)
-    
+
     novo_usuario = {
         "nome": dados.nome,
         "email": dados.email,
         "senha_hash": senha_segura
     }
-    
+
     response = supabase.table("usuarios").insert(novo_usuario).execute()
     if not response.data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Erro ao cadastrar usuário.")
-        
+
     return response.data[0]
 
+# [2AV] O login recebe o formulário OAuth2 (campo "username" = e-mail, "password" = senha),
+# para funcionar no botão "Authorize" do Swagger. Antes ele aceitava só JSON e o Swagger dava 422.
 @router.post("/login", response_model=Token)
-def login(dados: LoginRequest):
-    
-    response = supabase.table("usuarios").select("*").eq("email", dados.email).execute()
+def login(form: OAuth2PasswordRequestForm = Depends()):
+
+    response = supabase.table("usuarios").select("*").eq("email", form.username).execute()
+    # [2AV] Os erros 401 do login também enviam o cabeçalho "WWW-Authenticate: Bearer".
     if not response.data:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="E-mail ou senha incorretos.")
-    
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="E-mail ou senha incorretos.", headers={"WWW-Authenticate": "Bearer"})
+
     usuario = response.data[0]
-    
-    
-    if not verificar_senha(dados.senha, usuario["senha_hash"]):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="E-mail ou senha incorretos.")
-    
-   
+
+
+    if not verificar_senha(form.password, usuario["senha_hash"]):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="E-mail ou senha incorretos.", headers={"WWW-Authenticate": "Bearer"})
+
+    # [2AV] Usuário desativado (RF03) não pode fazer login.
+    if usuario.get("ativo") is False:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário desativado.", headers={"WWW-Authenticate": "Bearer"})
+
+
     token = criar_token_acesso({"sub": usuario["email"]})
-    
+
     return {"access_token": token, "token_type": "bearer"}
 
 @router.get("/me", response_model=UsuarioResponse)

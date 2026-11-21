@@ -13,6 +13,8 @@ class InscricaoResponse(InscricaoBase):
     id: int
     created_at: datetime
     status: str = "ATIVA"
+    # [2AV] Presença registrada (necessária para emitir certificado - RN07).
+    presente: bool = False
 
     class Config:
         from_attributes = True
