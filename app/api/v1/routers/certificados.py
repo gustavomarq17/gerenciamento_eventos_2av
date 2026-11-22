@@ -1,17 +1,14 @@
-# [2AV] CRUD de certificados (RF10/RF11): emitir, listar, consultar/validar pelo código e excluir.
-# Todas as rotas exigem token JWT. Não existe rota de edição: o código validador é gerado na
-# emissão e nunca pode ser alterado (RN09).
 import uuid
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, status, Depends
 from app.schemas.certificado import CertificadoCreate, CertificadoResponse
-from app.utils.security import obter_usuario_atual
+from app.utils.security import obter_usuario_atual, exigir_perfil
 from app.database.connection import supabase
 
 router = APIRouter(prefix="/certificados", tags=["Certificados"])
 
 @router.post("/", response_model=CertificadoResponse, status_code=status.HTTP_201_CREATED)
-def emitir_certificado(dados: CertificadoCreate, usuario_atual: dict = Depends(obter_usuario_atual)):
+def emitir_certificado(dados: CertificadoCreate, usuario_atual: dict = Depends(exigir_perfil("ADMIN", "ORGANIZADOR"))):
     """Emitir certificado para uma inscrição confirmada e com presença registrada (RF10, RN07)."""
 
     inscricao_resp = supabase.table("inscricoes").select("*").eq("id", dados.inscricao_id).execute()
@@ -20,18 +17,15 @@ def emitir_certificado(dados: CertificadoCreate, usuario_atual: dict = Depends(o
 
     inscricao = inscricao_resp.data[0]
 
-    # RN07: a inscrição precisa estar confirmada (ATIVA) e com presença registrada.
     if inscricao.get("status") != "ATIVA":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A inscrição não está confirmada.")
     if not inscricao.get("presente"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A presença do participante não foi registrada.")
 
-    # Não permite dois certificados para a mesma inscrição.
     existente = supabase.table("certificados").select("id").eq("inscricao_id", dados.inscricao_id).execute()
     if existente.data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Já existe um certificado para esta inscrição.")
 
-    # RN09: código validador único (UUID) gerado no momento da emissão.
     novo_certificado = {
         "inscricao_id": dados.inscricao_id,
         "codigo_validador": str(uuid.uuid4())
@@ -43,7 +37,7 @@ def emitir_certificado(dados: CertificadoCreate, usuario_atual: dict = Depends(o
     return response.data[0]
 
 @router.get("/", response_model=list[CertificadoResponse])
-def listar_certificados(usuario_atual: dict = Depends(obter_usuario_atual)):
+def listar_certificados(usuario_atual: dict = Depends(exigir_perfil("ADMIN", "ORGANIZADOR"))):
     """Listar todos os certificados emitidos."""
     response = supabase.table("certificados").select("*").execute()
     return response.data
@@ -58,7 +52,7 @@ def validar_certificado(codigo_validador: UUID, usuario_atual: dict = Depends(ob
     return response.data[0]
 
 @router.delete("/{certificado_id}", status_code=status.HTTP_204_NO_CONTENT)
-def excluir_certificado(certificado_id: int, usuario_atual: dict = Depends(obter_usuario_atual)):
+def excluir_certificado(certificado_id: int, usuario_atual: dict = Depends(exigir_perfil("ADMIN"))):
     """Excluir um certificado."""
     response = supabase.table("certificados").delete().eq("id", certificado_id).execute()
     if not response.data:

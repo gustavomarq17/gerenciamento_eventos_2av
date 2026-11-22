@@ -3,8 +3,6 @@ uvicorn[standard]
 supabase
 pydantic
 python-dotenv
-# [2AV] Dependências que faltavam: email-validator (EmailStr), python-multipart (formulário
-# de login), bcrypt (hash de senha, sem passlib), PyJWT (token JWT), httpx e pytest (testes).
 email-validator
 python-multipart
 bcrypt>=4.0

@@ -1,9 +1,6 @@
-# [2AV] Configuração compartilhada dos testes. Os testes rodam SEM internet: o cliente real do
-# Supabase é trocado por um "SupabaseFalso" que guarda as tabelas em memória (listas de dicionários).
 import os
 from datetime import datetime, timezone
 
-# Variáveis de teste definidas ANTES de importar a aplicação (o .env real não é usado nos testes).
 os.environ["SUPABASE_URL"] = "http://localhost:54321"
 os.environ["SUPABASE_KEY"] = "chave-de-teste"
 os.environ["JWT_SECRET_KEY"] = "segredo-somente-para-testes-com-32-bytes-ou-mais"
@@ -18,11 +15,10 @@ from app.main import app
 from app.api.v1.routers import auth, categorias, eventos, inscricoes, lista_espera, usuarios, certificados
 from app.utils import security
 
-# Valores padrão das colunas, como no banco depois dos SQLs da entrega.
 PADROES = {
     "eventos": {"status": "ATIVO"},
     "inscricoes": {"status": "ATIVA", "presente": False},
-    "usuarios": {"ativo": True},
+    "usuarios": {"ativo": True, "perfil": "PARTICIPANTE"},
 }
 
 
@@ -93,7 +89,6 @@ class ConsultaFalsa:
             linhas.append(nova)
             return Resposta([dict(nova)])
 
-        # Compara como texto para aceitar int/str/UUID, como o PostgREST faz.
         encontradas = [l for l in linhas if all(str(l.get(c)) == str(v) for c, v in self.filtros)]
 
         if self.acao == "update":
@@ -117,8 +112,8 @@ class ConsultaFalsa:
 class SupabaseFalso:
     def __init__(self):
         self.tabelas = {}
-        self.ultimo_id = 0  # ids sequenciais, como o auto-incremento do banco
-        self.sem_conexao = False  # True simula a rede bloqueada
+        self.ultimo_id = 0
+        self.sem_conexao = False
 
     def table(self, nome):
         return ConsultaFalsa(self, nome)
@@ -150,3 +145,27 @@ def cabecalho(client):
     """Cabeçalho Authorization com um token válido."""
     token = cadastrar_e_logar(client)
     return {"Authorization": f"Bearer {token}"}
+
+
+def criar_usuario_com_perfil(client, banco, email, perfil):
+    client.post("/api/v1/auth/register", json={"nome": perfil.title(), "email": email, "senha": "senha123"})
+    for usuario in banco.tabelas["usuarios"]:
+        if usuario["email"] == email:
+            usuario["perfil"] = perfil
+    resposta = client.post("/api/v1/auth/login", data={"username": email, "password": "senha123"})
+    return {"Authorization": f"Bearer {resposta.json()['access_token']}"}
+
+
+@pytest.fixture
+def cabecalho_admin(client, banco):
+    return criar_usuario_com_perfil(client, banco, "admin@teste.com", "ADMIN")
+
+
+@pytest.fixture
+def cabecalho_organizador(client, banco):
+    return criar_usuario_com_perfil(client, banco, "organizador@teste.com", "ORGANIZADOR")
+
+
+@pytest.fixture
+def cabecalho_participante(client, banco):
+    return criar_usuario_com_perfil(client, banco, "participante@teste.com", "PARTICIPANTE")

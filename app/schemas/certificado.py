@@ -1,4 +1,3 @@
-# [2AV] Schemas dos certificados (RF10/RF11): dados para emitir e dados devolvidos pela API.
 from pydantic import BaseModel
 from datetime import datetime
 

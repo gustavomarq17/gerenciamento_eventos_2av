@@ -1,0 +1,111 @@
+Comando: .\venv\Scripts\python.exe -m pytest -v
+Data: 22/11/2026 19:18
+Testes rodam sem internet (Supabase falso em memoria - app/tests/conftest.py)
+==============================================================================
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.2.0, pluggy-1.7.0 -- C:\Users\Educação\Documents\gerenciamento_eventos\venv\Scripts\python.exe
+rootdir: C:\Users\Educação\Documents\gerenciamento_eventos
+configfile: pytest.ini
+testpaths: app/tests
+plugins: anyio-4.16.0
+collecting ... collected 67 items
+
+app/tests/test_auth.py::test_cadastro_retorna_201_sem_senha PASSED       [  1%]
+app/tests/test_auth.py::test_cadastro_email_duplicado_retorna_400 PASSED [  2%]
+app/tests/test_auth.py::test_cadastro_email_invalido_retorna_422 PASSED  [  4%]
+app/tests/test_auth.py::test_cadastro_senha_maior_que_72_bytes_retorna_422 PASSED [  5%]
+app/tests/test_auth.py::test_login_correto_retorna_token PASSED          [  7%]
+app/tests/test_auth.py::test_login_senha_errada_retorna_401 PASSED       [  8%]
+app/tests/test_auth.py::test_login_email_inexistente_retorna_401 PASSED  [ 10%]
+app/tests/test_auth.py::test_me_com_token_valido_retorna_usuario PASSED  [ 11%]
+app/tests/test_auth.py::test_me_sem_token_retorna_401 PASSED             [ 13%]
+app/tests/test_auth.py::test_me_token_invalido_retorna_401 PASSED        [ 14%]
+app/tests/test_auth.py::test_me_token_com_outra_chave_retorna_401 PASSED [ 16%]
+app/tests/test_auth.py::test_me_token_expirado_retorna_401 PASSED        [ 17%]
+app/tests/test_auth.py::test_criar_evento_sem_token_retorna_401 PASSED   [ 19%]
+app/tests/test_auth.py::test_criar_evento_com_token_invalido_retorna_401 PASSED [ 20%]
+app/tests/test_auth.py::test_criar_evento_com_token_valido_retorna_201 PASSED [ 22%]
+app/tests/test_auth.py::test_inscricao_sem_token_retorna_401 PASSED      [ 23%]
+app/tests/test_auth.py::test_inscricao_com_token_valido_retorna_201 PASSED [ 25%]
+app/tests/test_auth.py::test_falha_de_rede_retorna_503 PASSED            [ 26%]
+app/tests/test_auth.py::test_erro_do_banco_retorna_400 PASSED            [ 28%]
+app/tests/test_certificados.py::test_rotas_de_certificados_sem_token_retornam_401 PASSED [ 29%]
+app/tests/test_certificados.py::test_emitir_sem_presenca_retorna_400 PASSED [ 31%]
+app/tests/test_certificados.py::test_emitir_para_inscricao_cancelada_retorna_400 PASSED [ 32%]
+app/tests/test_certificados.py::test_emitir_para_inscricao_inexistente_retorna_404 PASSED [ 34%]
+app/tests/test_certificados.py::test_fluxo_completo_do_certificado PASSED [ 35%]
+app/tests/test_certificados.py::test_codigo_malformado_retorna_422_e_inexistente_404 PASSED [ 37%]
+app/tests/test_crud.py::test_crud_categorias PASSED                      [ 38%]
+app/tests/test_crud.py::test_listar_eventos_com_colunas_reais_e_data_passada PASSED [ 40%]
+app/tests/test_crud.py::test_editar_e_excluir_evento PASSED              [ 41%]
+app/tests/test_crud.py::test_criar_evento_com_data_passada_retorna_422 PASSED [ 43%]
+app/tests/test_crud.py::test_lista_espera_duplicada_retorna_400 PASSED   [ 44%]
+app/tests/test_inscricao.py::test_realizar_inscricao_evento_inativo PASSED [ 46%]
+app/tests/test_inscricao.py::test_inscricao_evento_inexistente_retorna_404 PASSED [ 47%]
+app/tests/test_inscricao.py::test_inscricao_duplicada_retorna_400 PASSED [ 49%]
+app/tests/test_inscricao.py::test_inscricao_evento_lotado_retorna_400 PASSED [ 50%]
+app/tests/test_inscricao.py::test_listar_inscricoes PASSED               [ 52%]
+app/tests/test_inscricao.py::test_marcar_presenca PASSED                 [ 53%]
+app/tests/test_inscricao.py::test_cancelar_inscricao_promove_lista_espera PASSED [ 55%]
+app/tests/test_permissoes.py::test_cadastro_sempre_cria_participante PASSED [ 56%]
+app/tests/test_permissoes.py::test_participante_nao_muda_o_proprio_perfil PASSED [ 58%]
+app/tests/test_permissoes.py::test_organizador_nao_muda_perfil PASSED    [ 59%]
+app/tests/test_permissoes.py::test_admin_muda_perfil_e_valor_invalido_da_422 PASSED [ 61%]
+app/tests/test_permissoes.py::test_sem_token_retorna_401_e_nao_403 PASSED [ 62%]
+app/tests/test_permissoes.py::test_token_invalido_retorna_401_e_perfil_errado_retorna_403 PASSED [ 64%]
+app/tests/test_permissoes.py::test_usuario_desativado_recebe_401_e_nao_403 PASSED [ 65%]
+app/tests/test_permissoes.py::test_participante_nao_cria_evento PASSED   [ 67%]
+app/tests/test_permissoes.py::test_organizador_cria_evento_e_vira_dono PASSED [ 68%]
+app/tests/test_permissoes.py::test_organizador_edita_so_o_proprio_evento PASSED [ 70%]
+app/tests/test_permissoes.py::test_admin_edita_evento_de_qualquer_organizador PASSED [ 71%]
+app/tests/test_permissoes.py::test_participante_nao_edita_evento PASSED  [ 73%]
+app/tests/test_permissoes.py::test_organizador_nao_exclui_evento_e_admin_exclui PASSED [ 74%]
+app/tests/test_permissoes.py::test_todos_os_perfis_listam_eventos PASSED [ 76%]
+app/tests/test_permissoes.py::test_admin_e_organizador_nao_se_inscrevem PASSED [ 77%]
+app/tests/test_permissoes.py::test_participante_se_inscreve_e_vira_dono PASSED [ 79%]
+app/tests/test_permissoes.py::test_participante_nao_cancela_inscricao_de_outro PASSED [ 80%]
+app/tests/test_permissoes.py::test_participante_cancela_a_propria_inscricao PASSED [ 82%]
+app/tests/test_permissoes.py::test_organizador_nao_cancela_e_admin_cancela_qualquer PASSED [ 83%]
+app/tests/test_permissoes.py::test_participante_lista_so_as_proprias_inscricoes PASSED [ 85%]
+app/tests/test_permissoes.py::test_presenca_so_pelo_organizador_dono_ou_admin PASSED [ 86%]
+app/tests/test_permissoes.py::test_certificado_participante_nao_emite_mas_consulta PASSED [ 88%]
+app/tests/test_permissoes.py::test_usuarios_proprios_dados_e_gestao_pelo_admin PASSED [ 89%]
+app/tests/test_permissoes.py::test_categorias_so_admin_gerencia PASSED   [ 91%]
+app/tests/test_usuarios.py::test_rotas_de_usuarios_sem_token_retornam_401 PASSED [ 92%]
+app/tests/test_usuarios.py::test_listar_e_consultar_sem_senha PASSED     [ 94%]
+app/tests/test_usuarios.py::test_consultar_usuario_inexistente_retorna_404 PASSED [ 95%]
+app/tests/test_usuarios.py::test_editar_usuario PASSED                   [ 97%]
+app/tests/test_usuarios.py::test_editar_usuario_com_email_de_outro_retorna_400 PASSED [ 98%]
+app/tests/test_usuarios.py::test_desativar_usuario_bloqueia_login_e_token PASSED [100%]
+
+============================== warnings summary ===============================
+venv\Lib\site-packages\fastapi\testclient.py:1
+  C:\Users\Educação\Documents\gerenciamento_eventos\venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+app\schemas\evento.py:60
+  C:\Users\Educação\Documents\gerenciamento_eventos\app\schemas\evento.py:60: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.14/migration/
+    class EventoResponse(BaseModel):
+
+app\schemas\inscricao.py:14
+  C:\Users\Educação\Documents\gerenciamento_eventos\app\schemas\inscricao.py:14: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.14/migration/
+    class InscricaoResponse(InscricaoBase):
+
+app\schemas\categoria.py:16
+  C:\Users\Educação\Documents\gerenciamento_eventos\app\schemas\categoria.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.14/migration/
+    class CategoriaResponse(CategoriaBase):
+
+app\schemas\usuarios.py:20
+  C:\Users\Educação\Documents\gerenciamento_eventos\app\schemas\usuarios.py:20: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.14/migration/
+    class UsuarioResponse(BaseModel):
+
+app\schemas\lista_espera.py:9
+  C:\Users\Educação\Documents\gerenciamento_eventos\app\schemas\lista_espera.py:9: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.14/migration/
+    class ListaEsperaResponse(ListaEsperaCreate):
+
+app\schemas\certificado.py:8
+  C:\Users\Educação\Documents\gerenciamento_eventos\app\schemas\certificado.py:8: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.14/migration/
+    class CertificadoResponse(BaseModel):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 67 passed, 7 warnings in 44.09s =======================

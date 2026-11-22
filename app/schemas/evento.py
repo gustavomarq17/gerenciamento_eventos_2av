@@ -1,6 +1,5 @@
 from pydantic import BaseModel, field_validator
 from datetime import datetime
-# [2AV] "date" é usado no EventoResponse, porque a coluna data_evento é do tipo date no Supabase.
 from datetime import date
 from typing import Optional
 
@@ -54,9 +53,6 @@ class EventoUpdate(BaseModel):
             raise ValueError('A capacidade do evento deve ser maior que zero.')
         return v
 
-# [2AV] EventoResponse passa a seguir as colunas reais da tabela eventos (nome, local,
-# data_evento como data) e não herda mais o validador de "data futura". Antes, listar
-# um evento já realizado, ou que tivesse "nome" em vez de "titulo", dava erro 500.
 class EventoResponse(BaseModel):
     id: int
     created_at: datetime
@@ -67,6 +63,7 @@ class EventoResponse(BaseModel):
     capacidade: Optional[int] = None
     categoria_id: Optional[int] = None
     status: str = "ATIVO"
+    organizador_id: Optional[int] = None
 
     class Config:
         from_attributes = True

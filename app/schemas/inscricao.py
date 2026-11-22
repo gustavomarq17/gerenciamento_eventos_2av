@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
+from typing import Optional
 
 class InscricaoBase(BaseModel):
     nome_participante: str
@@ -13,8 +14,8 @@ class InscricaoResponse(InscricaoBase):
     id: int
     created_at: datetime
     status: str = "ATIVA"
-    # [2AV] Presença registrada (necessária para emitir certificado - RN07).
     presente: bool = False
+    usuario_id: Optional[int] = None
 
     class Config:
         from_attributes = True

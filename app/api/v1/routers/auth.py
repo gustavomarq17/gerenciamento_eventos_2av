@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-# [2AV] OAuth2PasswordRequestForm: formulário de login usado pelo botão "Authorize" do Swagger.
 from fastapi.security import OAuth2PasswordRequestForm
 from app.schemas.usuarios import UsuarioCreate, UsuarioResponse, Token
 from app.utils.security import hash_senha, verificar_senha, criar_token_acesso, obter_usuario_atual
@@ -20,7 +19,8 @@ def cadastrar_usuario(dados: UsuarioCreate):
     novo_usuario = {
         "nome": dados.nome,
         "email": dados.email,
-        "senha_hash": senha_segura
+        "senha_hash": senha_segura,
+        "perfil": "PARTICIPANTE"
     }
 
     response = supabase.table("usuarios").insert(novo_usuario).execute()
@@ -29,13 +29,10 @@ def cadastrar_usuario(dados: UsuarioCreate):
 
     return response.data[0]
 
-# [2AV] O login recebe o formulário OAuth2 (campo "username" = e-mail, "password" = senha),
-# para funcionar no botão "Authorize" do Swagger. Antes ele aceitava só JSON e o Swagger dava 422.
 @router.post("/login", response_model=Token)
 def login(form: OAuth2PasswordRequestForm = Depends()):
 
     response = supabase.table("usuarios").select("*").eq("email", form.username).execute()
-    # [2AV] Os erros 401 do login também enviam o cabeçalho "WWW-Authenticate: Bearer".
     if not response.data:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="E-mail ou senha incorretos.", headers={"WWW-Authenticate": "Bearer"})
 
@@ -45,14 +42,13 @@ def login(form: OAuth2PasswordRequestForm = Depends()):
     if not verificar_senha(form.password, usuario["senha_hash"]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="E-mail ou senha incorretos.", headers={"WWW-Authenticate": "Bearer"})
 
-    # [2AV] Usuário desativado (RF03) não pode fazer login.
     if usuario.get("ativo") is False:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário desativado.", headers={"WWW-Authenticate": "Bearer"})
 
 
     token = criar_token_acesso({"sub": usuario["email"]})
 
-    return {"access_token": token, "token_type": "bearer"}
+    return {"access_token": token, "token_type": "bearer", "perfil": usuario.get("perfil")}
 
 @router.get("/me", response_model=UsuarioResponse)
 def consultar_usuario_autenticado(usuario_atual: dict = Depends(obter_usuario_atual)):

@@ -1,21 +1,21 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from app.schemas.inscricao import InscricaoCreate, InscricaoResponse
-from app.utils.security import obter_usuario_atual
+from app.utils.security import obter_usuario_atual, exigir_perfil
 from app.database.connection import supabase
 
 router = APIRouter(prefix="/inscricoes", tags=["Inscrições"])
 
 @router.get("/", response_model=list[InscricaoResponse])
-def listar_inscricoes():
+def listar_inscricoes(usuario_atual: dict = Depends(obter_usuario_atual)):
     """Listar todas as inscrições efetuadas."""
+    if usuario_atual["perfil"] == "PARTICIPANTE":
+        response = supabase.table("inscricoes").select("*").eq("usuario_id", usuario_atual["id"]).execute()
+        return response.data
     response = supabase.table("inscricoes").select("*").execute()
     return response.data
 
-# [2AV] Havia dois POST "/" neste arquivo. Na execução valia o primeiro (sem as regras de negócio)
-# e o Swagger mostrava o segundo (sem cadeado). O duplicado foi removido e esta rota, que tem as
-# regras RN02/RN03/RN08, passou a exigir token JWT (rota protegida).
 @router.post("/", response_model=InscricaoResponse, status_code=status.HTTP_201_CREATED)
-def realizar_inscricao(inscricao: InscricaoCreate, usuario_atual: dict = Depends(obter_usuario_atual)):
+def realizar_inscricao(inscricao: InscricaoCreate, usuario_atual: dict = Depends(exigir_perfil("PARTICIPANTE"))):
     """Realizar inscrição em um evento (RF07)."""
 
     evento_resp = supabase.table("eventos").select("*").eq("id", inscricao.evento_id).execute()
@@ -49,31 +49,43 @@ def realizar_inscricao(inscricao: InscricaoCreate, usuario_atual: dict = Depends
 
     dados = inscricao.model_dump()
     dados["status"] = "ATIVA"
-    
+    dados["usuario_id"] = usuario_atual["id"]
+
     response = supabase.table("inscricoes").insert(dados).execute()
     if not response.data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Erro ao realizar inscrição.")
     
     return response.data[0]
 
-# [2AV] Marca a presença do participante na inscrição (necessária para emitir certificado - RN07).
 @router.patch("/{inscricao_id}/presenca", response_model=InscricaoResponse)
-def marcar_presenca(inscricao_id: int, usuario_atual: dict = Depends(obter_usuario_atual)):
+def marcar_presenca(inscricao_id: int, usuario_atual: dict = Depends(exigir_perfil("ADMIN", "ORGANIZADOR"))):
     """Registra a presença do participante em uma inscrição."""
+    inscricao_resp = supabase.table("inscricoes").select("*").eq("id", inscricao_id).execute()
+    if not inscricao_resp.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inscrição não encontrada.")
+
+    if usuario_atual["perfil"] == "ORGANIZADOR":
+        evento_resp = supabase.table("eventos").select("*").eq("id", inscricao_resp.data[0]["evento_id"]).execute()
+        if not evento_resp.data or evento_resp.data[0].get("organizador_id") != usuario_atual["id"]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado: você só pode registrar presença em eventos criados por você.")
+
     response = supabase.table("inscricoes").update({"presente": True}).eq("id", inscricao_id).execute()
     if not response.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inscrição não encontrada.")
     return response.data[0]
 
 @router.delete("/{inscricao_id}", status_code=status.HTTP_204_NO_CONTENT)
-def cancelar_inscricao(inscricao_id: int):
+def cancelar_inscricao(inscricao_id: int, usuario_atual: dict = Depends(exigir_perfil("ADMIN", "PARTICIPANTE"))):
     """Cancela inscrição e promove automaticamente o primeiro da fila de espera."""
-    
+
     inscricao_resp = supabase.table("inscricoes").select("*").eq("id", inscricao_id).execute()
     if not inscricao_resp.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inscrição não encontrada.")
-    
+
     inscricao = inscricao_resp.data[0]
+
+    if usuario_atual["perfil"] == "PARTICIPANTE" and inscricao.get("usuario_id") != usuario_atual["id"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado: você só pode cancelar a sua própria inscrição.")
     evento_id = inscricao["evento_id"]
 
     delete_resp = supabase.table("inscricoes").delete().eq("id", inscricao_id).execute()
@@ -93,7 +105,8 @@ def cancelar_inscricao(inscricao_id: int):
         nova_inscricao = {
             "evento_id": proximo["evento_id"],
             "nome_participante": proximo["nome_participante"],
-            "email_participante": proximo["email_participante"]
+            "email_participante": proximo["email_participante"],
+            "usuario_id": proximo.get("participante_id")
         }
         
         supabase.table("inscricoes").insert(nova_inscricao).execute()

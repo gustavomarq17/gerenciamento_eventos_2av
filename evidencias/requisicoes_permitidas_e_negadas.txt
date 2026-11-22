@@ -1,0 +1,73 @@
+EVIDÊNCIA - Requisições permitidas e negadas (banco real Supabase)
+Data: 22/11/2026 19:20   Servidor: uvicorn em http://127.0.0.1:8000
+Usuários de teste: teste.admin.2av@teste.com, teste.org.2av@teste.com, teste.org2.2av@teste.com, teste.part.2av@teste.com, teste.part2.2av@teste.com, teste.esperto.2av@teste.com
+Perfis promovidos pelo cliente Supabase da aplicação (equivale ao UPDATE do SQL). Dados de teste marcados com '[2av-teste]'
+e apagados ao final. Legenda: 401 = não autenticado | 403 = autenticado sem permissão | 2xx = permitido.
+======================================================================================================================================================
+== AUTENTICAÇÃO E PERFIS ==
+ 1. [ADMIN         ] POST   /auth/login                              esperado 200 | obtido 200 OK  | PERMITIDO | token JWT recebido, perfil=ADMIN
+ 2. [ADMIN         ] GET    /auth/me                                 esperado 200 | obtido 200 OK  | PERMITIDO | {"id": 3, "nome": "Teste ADMIN 2AV", "email": "teste.admin.2av@teste.com", "perfil": "ADMIN", "ativo": true}
+ 3. [ORGANIZADOR   ] GET    /auth/me                                 esperado 200 | obtido 200 OK  | PERMITIDO | {"id": 4, "nome": "Teste ORGANIZADOR 2AV", "email": "teste.org.2av@teste.com", "perfil": "ORGANIZADOR", "ativo": true}
+ 4. [PARTICIPANTE  ] GET    /auth/me                                 esperado 200 | obtido 200 OK  | PERMITIDO | {"id": 6, "nome": "Teste PARTICIPANTE 2AV", "email": "teste.part.2av@teste.com", "perfil": "PARTICIPANTE", "ativo": true}
+ 5. [(público)     ] POST   /auth/register enviando "perfil":"ADMIN"    esperado 201 | obtido 201 OK  | PERMITIDO | criado com perfil=PARTICIPANTE (o campo enviado foi ignorado)
+== 401 x 403 ==
+ 6. [(sem token)   ] POST   /eventos/                                esperado 401 | obtido 401 OK  | NEGADO    | detail: Not authenticated
+ 7. [(token falso) ] POST   /eventos/                                esperado 401 | obtido 401 OK  | NEGADO    | detail: Credenciais de autenticação inválidas ou expiradas
+ 8. [(sem token)   ] GET    /eventos/                                esperado 401 | obtido 401 OK  | NEGADO    | detail: Not authenticated
+== EVENTOS (matriz 5.4 + RN10) ==
+ 9. [PARTICIPANTE  ] POST   /eventos/                                esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: seu perfil não tem permissão para esta ação.
+10. [ORGANIZADOR   ] POST   /eventos/                                esperado 201 | obtido 201 OK  | PERMITIDO | {"id": 3, "nome": "Evento do organizador 1 [2av-teste]", "organizador_id": 4}
+11. [ORGANIZADOR_2 ] POST   /eventos/                                esperado 201 | obtido 201 OK  | PERMITIDO | {"id": 4, "nome": "Evento do organizador 2 [2av-teste]", "organizador_id": 5}
+12. [ADMIN         ] POST   /eventos/                                esperado 201 | obtido 201 OK  | PERMITIDO | {"id": 5, "nome": "Evento do admin [2av-teste]", "organizador_id": 3}
+13. [ADMIN         ] GET    /eventos/                                esperado 200 | obtido 200 OK  | PERMITIDO | lista com 4 item(ns)
+14. [ORGANIZADOR   ] GET    /eventos/                                esperado 200 | obtido 200 OK  | PERMITIDO | lista com 4 item(ns)
+15. [PARTICIPANTE  ] GET    /eventos/                                esperado 200 | obtido 200 OK  | PERMITIDO | lista com 4 item(ns)
+16. [ORGANIZADOR   ] PUT    /eventos/4                               esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: você só pode editar eventos criados por você.
+17. [ORGANIZADOR   ] PUT    /eventos/3                               esperado 200 | obtido 200 OK  | PERMITIDO | {"id": 3, "nome": "Evento do organizador 1 editado [2av-teste]", "organizador_id": 4}
+18. [ADMIN         ] PUT    /eventos/4                               esperado 200 | obtido 200 OK  | PERMITIDO | {"id": 4, "nome": "Evento do organizador 2 editado pelo admin [2av-teste]", "organizador_id": 5}
+19. [PARTICIPANTE  ] PUT    /eventos/3                               esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: seu perfil não tem permissão para esta ação.
+20. [ORGANIZADOR   ] DELETE /eventos/5                               esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: seu perfil não tem permissão para esta ação.
+21. [PARTICIPANTE  ] DELETE /eventos/5                               esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: seu perfil não tem permissão para esta ação.
+22. [ADMIN         ] DELETE /eventos/5                               esperado 204 | obtido 204 OK  | PERMITIDO | (sem conteúdo)
+== INSCRIÇÕES (matriz 5.4 + RN05) ==
+23. [ADMIN         ] POST   /inscricoes/                             esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: seu perfil não tem permissão para esta ação.
+24. [ORGANIZADOR   ] POST   /inscricoes/                             esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: seu perfil não tem permissão para esta ação.
+25. [PARTICIPANTE  ] POST   /inscricoes/                             esperado 201 | obtido 201 OK  | PERMITIDO | {"id": 4, "usuario_id": 6, "presente": false}
+26. [PARTICIPANTE_2] POST   /inscricoes/                             esperado 201 | obtido 201 OK  | PERMITIDO | {"id": 5, "usuario_id": 7, "presente": false}
+27. [PARTICIPANTE  ] GET    /inscricoes/                             esperado 200 | obtido 200 OK  | PERMITIDO | lista com 1 item(ns)
+      -> o PARTICIPANTE viu só as próprias? True
+28. [ORGANIZADOR   ] GET    /inscricoes/                             esperado 200 | obtido 200 OK  | PERMITIDO | lista com 3 item(ns)
+29. [PARTICIPANTE  ] DELETE /inscricoes/5                            esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: você só pode cancelar a sua própria inscrição.
+30. [ORGANIZADOR   ] DELETE /inscricoes/5                            esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: seu perfil não tem permissão para esta ação.
+== PRESENÇA (decisão nossa) ==
+31. [PARTICIPANTE  ] PATCH  /inscricoes/4/presenca                   esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: seu perfil não tem permissão para esta ação.
+32. [ORGANIZADOR_2 ] PATCH  /inscricoes/4/presenca                   esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: você só pode registrar presença em eventos criados por você.
+33. [ORGANIZADOR   ] PATCH  /inscricoes/4/presenca                   esperado 200 | obtido 200 OK  | PERMITIDO | {"id": 4, "usuario_id": 6, "presente": true}
+== CERTIFICADOS (matriz 5.4) ==
+34. [PARTICIPANTE  ] POST   /certificados/                           esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: seu perfil não tem permissão para esta ação.
+35. [ORGANIZADOR   ] POST   /certificados/                           esperado 201 | obtido 201 OK  | PERMITIDO | {"id": 2, "codigo_validador": "b7fe298f-0438-4f70-bfbf-7e7b91e99203"}
+36. [PARTICIPANTE  ] GET    /certificados/b7fe298f-0438-4f70-bfbf-7e7b91e99203 esperado 200 | obtido 200 OK  | PERMITIDO | {"id": 2, "codigo_validador": "b7fe298f-0438-4f70-bfbf-7e7b91e99203"}
+37. [PARTICIPANTE  ] GET    /certificados/                           esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: seu perfil não tem permissão para esta ação.
+38. [ORGANIZADOR   ] DELETE /certificados/2                          esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: seu perfil não tem permissão para esta ação.
+39. [ADMIN         ] DELETE /certificados/2                          esperado 204 | obtido 204 OK  | PERMITIDO | (sem conteúdo)
+== CANCELAMENTOS PERMITIDOS ==
+40. [PARTICIPANTE  ] DELETE /inscricoes/4                            esperado 204 | obtido 204 OK  | PERMITIDO | (sem conteúdo)
+41. [ADMIN         ] DELETE /inscricoes/5                            esperado 204 | obtido 204 OK  | PERMITIDO | (sem conteúdo)
+== USUÁRIOS (decisão nossa) ==
+42. [PARTICIPANTE  ] GET    /usuarios/                               esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: seu perfil não tem permissão para esta ação.
+43. [ADMIN         ] GET    /usuarios/                               esperado 200 | obtido 200 OK  | PERMITIDO | lista com 6 item(ns)
+44. [PARTICIPANTE  ] GET    /usuarios/6                              esperado 200 | obtido 200 OK  | PERMITIDO | {"id": 6, "nome": "Teste PARTICIPANTE 2AV", "email": "teste.part.2av@teste.com", "perfil": "PARTICIPANTE", "ativo": true}
+45. [PARTICIPANTE  ] GET    /usuarios/7                              esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: você só pode ver os seus próprios dados.
+46. [PARTICIPANTE  ] PATCH  /usuarios/6/perfil                       esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: seu perfil não tem permissão para esta ação.
+47. [ADMIN         ] PATCH  /usuarios/7/perfil                       esperado 200 | obtido 200 OK  | PERMITIDO | {"id": 7, "nome": "Teste PARTICIPANTE_2 2AV", "email": "teste.part2.2av@teste.com", "perfil": "ORGANIZADOR", "ativo": true}
+48. [ADMIN         ] PATCH  /usuarios/7/perfil                       esperado 422 | obtido 422 OK  | NEGADO    | detail: perfil deve ser 'ADMIN', 'ORGANIZADOR' ou 'PARTICIPANTE' (enviado: SUPERUSUARIO)
+49. [ADMIN         ] PATCH  /usuarios/7/desativar                    esperado 200 | obtido 200 OK  | PERMITIDO | {"id": 7, "nome": "Teste PARTICIPANTE_2 2AV", "email": "teste.part2.2av@teste.com", "perfil": "ORGANIZADOR", "ativo": false}
+50. [PART._2 (desat.)] GET    /auth/me (usuário desativado)            esperado 401 | obtido 401 OK  | NEGADO    | detail: Credenciais de autenticação inválidas ou expiradas
+== CATEGORIAS (decisão nossa) ==
+51. [PARTICIPANTE  ] POST   /categorias/                             esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: seu perfil não tem permissão para esta ação.
+52. [ORGANIZADOR   ] POST   /categorias/                             esperado 403 | obtido 403 OK  | NEGADO    | detail: Acesso negado: seu perfil não tem permissão para esta ação.
+53. [ADMIN         ] POST   /categorias/                             esperado 201 | obtido 201 OK  | PERMITIDO | {"id": 1, "nome": "Categoria [2av-teste]"}
+54. [PARTICIPANTE  ] GET    /categorias/                             esperado 200 | obtido 200 OK  | PERMITIDO | lista com 1 item(ns)
+55. [ADMIN         ] DELETE /categorias/1                            esperado 204 | obtido 204 OK  | PERMITIDO | (sem conteúdo)
+======================================================================================================================================================
+Total de chamadas: 55 | Resultado diferente do esperado: 0

@@ -1,4 +1,3 @@
-# [2AV] Testes de autenticação: cadastro, hash da senha, login, JWT, /me, rotas protegidas e 401.
 from datetime import datetime, timedelta, timezone
 import jwt
 
@@ -13,7 +12,6 @@ def test_cadastro_retorna_201_sem_senha(client, banco):
     assert corpo["email"] == "ana@teste.com"
     assert "senha" not in corpo
     assert "senha_hash" not in corpo
-    # No banco fica só o hash bcrypt, nunca a senha pura.
     salvo = banco.tabelas["usuarios"][0]["senha_hash"]
     assert salvo.startswith("$2b$")
     assert salvo != "senha123"
@@ -42,6 +40,7 @@ def test_login_correto_retorna_token(client):
     assert resposta.status_code == 200
     corpo = resposta.json()
     assert corpo["token_type"] == "bearer"
+    assert corpo["perfil"] == "PARTICIPANTE"
     payload = jwt.decode(corpo["access_token"], SEGREDO_TESTE, algorithms=["HS256"])
     assert payload["sub"] == "ana@teste.com"
     assert "exp" in payload
@@ -64,6 +63,7 @@ def test_me_com_token_valido_retorna_usuario(client, cabecalho):
     corpo = resposta.json()
     assert corpo["email"] == "maria@teste.com"
     assert "senha_hash" not in corpo
+    assert corpo["perfil"] == "PARTICIPANTE"
 
 
 def test_me_sem_token_retorna_401(client):
@@ -101,8 +101,8 @@ def test_criar_evento_com_token_invalido_retorna_401(client):
     assert resposta.status_code == 401
 
 
-def test_criar_evento_com_token_valido_retorna_201(client, cabecalho):
-    resposta = client.post("/api/v1/eventos/", json=EVENTO, headers=cabecalho)
+def test_criar_evento_com_token_valido_retorna_201(client, cabecalho_organizador):
+    resposta = client.post("/api/v1/eventos/", json=EVENTO, headers=cabecalho_organizador)
     assert resposta.status_code == 201
     assert resposta.json()["nome"] == "Workshop de FastAPI"
 
@@ -112,8 +112,8 @@ def test_inscricao_sem_token_retorna_401(client):
     assert resposta.status_code == 401
 
 
-def test_inscricao_com_token_valido_retorna_201(client, cabecalho):
-    evento_id = client.post("/api/v1/eventos/", json=EVENTO, headers=cabecalho).json()["id"]
+def test_inscricao_com_token_valido_retorna_201(client, cabecalho, cabecalho_organizador):
+    evento_id = client.post("/api/v1/eventos/", json=EVENTO, headers=cabecalho_organizador).json()["id"]
     resposta = client.post(
         "/api/v1/inscricoes/",
         json={"nome_participante": "Ana", "email_participante": "ana@teste.com", "evento_id": evento_id},
@@ -123,19 +123,19 @@ def test_inscricao_com_token_valido_retorna_201(client, cabecalho):
     assert resposta.json()["status"] == "ATIVA"
 
 
-def test_falha_de_rede_retorna_503(client, banco):
+def test_falha_de_rede_retorna_503(client, banco, cabecalho):
     banco.sem_conexao = True
-    resposta = client.get("/api/v1/categorias/")
+    resposta = client.get("/api/v1/categorias/", headers=cabecalho)
     assert resposta.status_code == 503
 
 
-def test_erro_do_banco_retorna_400(client, banco, monkeypatch):
+def test_erro_do_banco_retorna_400(client, banco, monkeypatch, cabecalho):
     from postgrest.exceptions import APIError
 
     def explodir(*args, **kwargs):
         raise APIError({"message": "column eventos.titulo does not exist", "code": "42703"})
 
     monkeypatch.setattr(banco, "table", explodir)
-    resposta = client.get("/api/v1/eventos/")
+    resposta = client.get("/api/v1/eventos/", headers=cabecalho)
     assert resposta.status_code == 400
     assert "does not exist" in resposta.json()["detail"]
